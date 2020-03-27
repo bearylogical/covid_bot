@@ -17,14 +17,33 @@ def create_table(engine):
     Base.metadata.create_all(engine)
 
 
+class AuthKeys(Base):
+    __tablename__ = 'auth'
+
+    id = Column(Integer, primary_key=True)
+    created_on = Column(DateTime, server_default=func.now())
+    used_on = Column(DateTime)
+    created_by = Column(Integer)
+    used_by = Column(Integer)
+    code = Column(String(10))
+
+class Message(Base):
+    __tablename__ = 'message'
+
+    id = Column(Integer, primary_key=True)
+    message = Column(Text)
+    created_on = Column(DateTime, server_default=func.now())
+    message_type = Column(String(20))
+    language = Column(String(50))
+    sent_by = Column(Integer)
+
+
 class Person(Base):
     __tablename__ = 'person'
 
     id = Column(Integer, primary_key=True)
-    chat_id = Column(String(100))
-    telegram_id = Column(String(100))
+    chat_id = Column(Integer)
     created_on = Column(DateTime, server_default=func.now())
-    session_id = Column(String(200))
     role = Column(String(20))
     language = Column(String(50))
 
