@@ -1,12 +1,10 @@
 import logging
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup
-from util.configs import read_configs, create_updater
-from telegram.ext import CommandHandler, MessageHandler, ConversationHandler, CallbackQueryHandler, Updater, \
-    CallbackContext
+from util.configs import read_configs
+from telegram.ext import CommandHandler, MessageHandler, ConversationHandler, Updater
 from telegram.ext import messagequeue as mq
 from telegram.ext.filters import Filters
 from sqlalchemy.orm import sessionmaker
-from res.models import db_connect, create_table, Person, Message, AuthKeys
+from res.models import db_connect, Person, Message, AuthKeys
 from util.languages import language_dict
 from util.helpers import gen_code
 import telegram.bot
@@ -163,6 +161,8 @@ def send_translation(bot, context):
 def change_language_data(bot, context):
     session = Session()
 
+    user = context.message.from_user
+
 
 def save_language_data(bot, context):
     session = Session()
@@ -238,13 +238,6 @@ def gen_translator_code(bot, context):
     return END
 
 
-#
-# def stop(update, context):
-#     """End Conversation by command."""
-#
-#     return update.message.reply_text('Okay, bye.')
-
-
 def main():
     from telegram.utils.request import Request
 
@@ -254,7 +247,7 @@ def main():
     q = mq.MessageQueue(all_burst_limit=3, all_time_limit_ms=3000)
     request = Request(con_pool_size=8)
     bot = MQBot(token=token, request=request, mqueue=q)
-    updater = telegram.ext.updater.Updater(bot=bot)
+    updater = Updater(bot=bot)
     dp = updater.dispatcher
     # add handlers
     # Set up second level ConversationHandler (adding a person)
