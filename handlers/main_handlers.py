@@ -1,10 +1,10 @@
 import logging
 from sqlalchemy.orm import sessionmaker
 from res.models import db_connect, Person, Message, AuthKeys
-from telegram.ext import CommandHandler, MessageHandler, ConversationHandler
+from telegram.ext import CommandHandler, MessageHandler, ConversationHandler, CallbackQueryHandler
 from util.languages import language_dict
 from util.helpers import gen_code
-import telegram.bot
+
 from datetime import datetime
 from telegram.ext.filters import Filters
 
@@ -20,7 +20,6 @@ STOPPING, SHOWING = map(chr, range(6, 8))
 
 engine = db_connect()
 Session = sessionmaker(bind=engine)
-
 
 
 def error(bot, context):
@@ -90,6 +89,7 @@ def translator_start(bot, context):
 
     return SEND_TRANSLATION
 
+
 def broadcast_message(message, language, bot):
     session = Session()
 
@@ -97,7 +97,6 @@ def broadcast_message(message, language, bot):
 
     for reader in readers:
         bot.send_message(chat_id=reader.chat_id, text=message)
-
 
 
 def send_translation(bot, context):
@@ -128,6 +127,7 @@ def send_translation(bot, context):
 
     return END
 
+
 # #TODO : functionality for changing preferences
 
 
@@ -135,6 +135,41 @@ def change_language_data(bot, context):
     session = Session()
 
     user = context.message.from_user
+
+    exist_person = session.query(Person).filter_by(chat_id=context.effective_chat.id
+                                                   ).first()
+
+    if exist_person is not None:
+        text = f'Your Previous language: {exist_person.language.capitalize()}\n\n'
+        text += 'Select new language:\n\n'
+        selection_text = "\n\n".join(v['prompt_text'] for v in language_dict.values())
+        bot.send_message(chat_id=context.effective_chat.id, text=text + selection_text)
+
+    return CHANGE_LANGUAGE
+
+
+def change_language_confirm(bot, context):
+    session = Session()
+
+    user = context.message.from_user
+
+    exist_person = session.query(Person).filter_by(chat_id=context.effective_chat.id).first()
+
+    if exist_person is not None:
+        try:
+            exist_person.language =  language_dict[int(context.message.text)]['language']
+            session.commit()
+            bot.send_message(chat_id=context.effective_chat.id,
+                             text=f"language {language_dict[int(context.message.text)]['language'].capitalize()} saved")
+        except:
+            session.rollback()
+            bot.send_message(chat_id=context.effective_chat.id, text='Error, please try again')
+            raise Exception('Error occured during saving')
+
+        finally:
+            session.close()
+
+    return CHANGE_LANGUAGE
 
 
 def save_language_data(bot, context):
@@ -152,7 +187,7 @@ def save_language_data(bot, context):
             session.add(person)
             session.commit()
             logger.info('Person added')
-            bot.message.reply_text('Information Saved')
+            bot.send_message(chat_id=context.effective_chat.id, text='Information Saved')
         except:
             session.rollback()
             bot.send_message(chat_id=context.effective_chat.id, text='Error, please try again')
@@ -212,13 +247,12 @@ def gen_translator_code(bot, context):
 
 
 basic_handler = ConversationHandler(
-        entry_points=[CommandHandler('start', start)],
-        states={
-            SELECT_LANGUAGE: [MessageHandler(Filters.text, save_language_data)],
-            CHANGE_LANGUAGE: [MessageHandler(Filters.text, change_language_data)]
-        },
-        fallbacks=[CommandHandler('cancel', cancel)]
-    )
+    entry_points=[CommandHandler('start', start)],
+    states={
+        SELECT_LANGUAGE: [MessageHandler(Filters.text, save_language_data)],
+    },
+    fallbacks=[CommandHandler('cancel', cancel)]
+)
 
 translator_handler = ConversationHandler(
     entry_points=[CommandHandler('translate', translator_start)],
@@ -232,6 +266,14 @@ upgrade_user_hander = ConversationHandler(
     entry_points=[CommandHandler('register', register_translator_start)],
     states={
         REGISTER_TRANSLATOR: [MessageHandler(Filters.text, register_translator)]
+    },
+    fallbacks=[CommandHandler('cancel', cancel)]
+)
+
+change_preference_handler = ConversationHandler(
+    entry_points=[CommandHandler('change', change_language_data)],
+    states={
+        CHANGE_LANGUAGE: [MessageHandler(Filters.regex('^(\d+)'), change_language_confirm)]
     },
     fallbacks=[CommandHandler('cancel', cancel)]
 )

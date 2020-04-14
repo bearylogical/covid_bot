@@ -3,7 +3,9 @@ from util.configs import read_configs
 from telegram.ext import CommandHandler, Updater
 from telegram.ext import messagequeue as mq
 from handlers.main_handlers import gen_translator_code, basic_handler, translator_handler, upgrade_user_hander, \
-    unknown_handler, error
+    unknown_handler, error, register_translator, change_preference_handler
+from telegram.ext.filters import Filters
+import telegram.bot
 
 # init logging
 logging.basicConfig(level=logging.DEBUG,
@@ -49,11 +51,10 @@ def main():
 
     dp.add_handler(CommandHandler('gen_code', gen_translator_code))
     dp.add_handler(CommandHandler('register_translator',register_translator))
-    dp.add_handler(Filters.user, translation_broadcast)
     dp.add_handler(basic_handler)
 
     dp.add_handler(translator_handler)
-    # dp.add_handler(translator_handler)
+    dp.add_handler(change_preference_handler)
     dp.add_handler(upgrade_user_hander)
     dp.add_handler(unknown_handler)
     dp.add_error_handler(error)
